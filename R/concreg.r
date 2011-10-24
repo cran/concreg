@@ -42,6 +42,31 @@
 
 }
 
+fp.scale <- function
+(
+ x
+ )
+### taken from package <mfp>
+### 2008-06
+{
+        scale <- 1
+        shift <- 0
+        if (min(x) <= 0) {
+                z <- diff(sort(x))
+                shift <- min(z[z > 0]) - min(x)
+                shift <- ceiling(shift * 10)/10
+        }
+        range <- mean(x + shift)
+        scale <- 10^(sign(log10(range)) * round(abs(log10(range))))
+        
+        list(
+             shift=shift,
+             scale=scale
+             )
+}
+
+
+
 "decomposeSurv" <- function
 (
  formula,
@@ -262,6 +287,7 @@
  c.risk=NULL,                           # Vektor mit Competing Risk 0, 1=event, 2=competing risk (status ist normal!!) NEU
  strata.var=NULL,                       # Namen der Stratifizierungsvariablen (Daten selbst sind bei data dabei) NEU
  trunc.weights=1,                       # quantile for weight truncation: all weights greater than that quantile will be truncated to that value
+ npar=FALSE,                            # nonparametric estimation?
  # breslow=NA, # righthand formula, if breslow weighted terms, e.g. ~ A + A:C
  # prentice=NA, # righthand formula, if prentice weighted terms, e.g. ~ A + A:C
  # taroneware=NA, # righthand formula, if tarone-ware weighted terms, e.g. ~ A + A:C
@@ -344,9 +370,11 @@
 
   # change Daniela Competing Risk Weights (getrennt nach Strata)
   # geht nicht so einfach, Problem mit ties (gleiche Zeiten nur 1 mal in der Liste)
-  vgl <- G <- data.frame(cbind(obj.full$resp[,2], obj.full$stratum, -99))
-  G <- unique(G)
-  for (i.strata in 1: max.strata) {
+  if(!is.null(c.risk))   #### Georg 110517
+  {
+   vgl <- G <- data.frame(cbind(obj.full$resp[,2], obj.full$stratum, -99))
+   G <- unique(G)
+   for (i.strata in 1: max.strata) {
     g.tmp <- rep(NA, times=sum(obj.full$stratum==i.strata))
     g.tmp[obj.full$resp[obj.full$stratum==i.strata,3]==0] <- 1
     g.tmp[obj.full$resp[obj.full$stratum==i.strata,3]==1 | obj.full$resp[obj.full$stratum==i.strata,3]==2] <- 0
@@ -368,6 +396,7 @@
   }
   G <- G[,3]
 
+  } else G<-rep(1,nrow(obj.full$resp))     #### Georg 110517
   # neue Time Variable für competing risk
   time.crisk <- obj.full$resp[,2]
   time.crisk[obj.full$resp[,"crisk"]==2] <- max(obj.full$resp[,2])+1
@@ -395,10 +424,11 @@
 
         k <- ncol(obj$mm1)    # number covariates w/o time-dep effects          # Anzahl Variablen
         k2 <- k + NTDE                                                          #! weg?
-
+        if (npar) nonpar<-1
+        else nonpar<-0
 #! weg?: W$NGV, NTDE
 #! hinzufügen: obj.full$stratum, W, G
-        PARMS <- c(n, k, 0, maxit, maxhs, maxstep, epsilon,  0, 0, 0, 0, 0, 0, max.strata, maxid, ind.offset)
+        PARMS <- c(n, k, 0, maxit, maxhs, maxstep, epsilon,  0, 0, 0, 0, 0, 0, max.strata, maxid, ind.offset, nonpar)
 
 
   # alles sortieren (obj, W, G, id ist sortiert)
@@ -415,7 +445,7 @@
         ##    IOARRAY[2,1]<-Z.sd[1]    # first variable is offset
         ##   }
         ## **************** fit model *********************
-        value0 <- concreg.fit(obj=obj, id=id, W=W, G=G, PARMS=PARMS)            #! Aufruf der Funktion mit dem Fortran Aufruf
+        value0 <- concreg.fit(obj=obj, id=id, W=W, G=G, PARMS=PARMS, npar=npar)            #! Aufruf der Funktion mit dem Fortran Aufruf
 
 #        cov.ls <- value0$cov.ls
 #        cov.lw <- cov.j <- dfbeta.resid <- NULL
@@ -501,7 +531,8 @@
 #                    W       = W,
                     W       = cbind(obj$stratum,obj$resp[,2],W)[obj$resp[,3]==1,],
                     offset.values= obj$offset.values, #
-                    x       = if(x) obj$mm1 else NA   # return original model matrix if requested
+                    x       = if(x) obj$mm1 else NA,   # return original model matrix if requested
+                    npar = npar
                     )
 
 #        ## if all weights are the same ...
@@ -574,6 +605,7 @@
 {
         print(x$call)
         cat("Model fitted by", x$method, "\n\n")
+        if(x$npar) cat("Nonparametric estimation \n")
         se<- diag(x$var)^0.5
         out <- cbind(x$coefficients, se, exp(x$coefficients),
                      x$ci.lower, x$ci.upper, x$coefficients/se, x$prob)
@@ -603,6 +635,7 @@
 {
         print(object$call)
         cat("\nModel fitted by", object$method, "\n\n")
+        if(object$npar) cat("Nonparametric estimation \n")
         ##cat("Confidence intervals and p-values by", object$method.ci, "\n\n")
         se<-diag(object$var)^0.5
         c.index<-exp(object$coefficients)/(1+exp(object$coefficients))
@@ -637,7 +670,7 @@
 }
 
 
-concreg.fit <- function(obj, id, W, G, PARMS)                                   #! für was braucht man CARDS=NULL?
+concreg.fit <- function(obj, id, W, G, PARMS, npar)                                   #! für was braucht man CARDS=NULL?
 {
   # fitter function
 
@@ -647,12 +680,20 @@ concreg.fit <- function(obj, id, W, G, PARMS)                                   
 #        maxid <- max(id)                                                       #! in PARMS
         maxid <- PARMS[15]
 
-        ## standardize model matrix
-        sd1 <- sd(obj$mm1)
-        sd2 <- sd(obj$timedata)                                                 #! weg?
-        Z.sd <- c(sd1, sd2 * sd1[obj$timeind])                                  #! weg?
-        ZxZ <- as.matrix(Z.sd) %*% t(as.matrix(Z.sd)) # used often to restandardize ...    #! weg?
-        obj$mm1 <- scale(obj$mm1, FALSE, sd1)
+        ## standardize model matrix, but only in semiparametric mode
+        if(!npar) {
+         sd1 <- apply(as.matrix(obj$mm1),2,sd)
+         sd2 <- apply(as.matrix(obj$timedata),2,sd)                                                 #! weg?
+         Z.sd <- c(sd1, sd2 * sd1[obj$timeind])                                  #! weg?
+         ZxZ <- as.matrix(Z.sd) %*% t(as.matrix(Z.sd)) # used often to restandardize ...    #! weg?
+         obj$mm1 <- scale(obj$mm1, FALSE, sd1)
+         } else {
+          sd1<-1
+          sd2 <- 1
+          Z.sd<-1
+          ZxZ <-1
+          }
+         
 
         ##if(ind.offset)
         obj$mm1o <- if(PARMS[16] != 0) cbind(obj$offset.values, obj$mm1) else obj$mm1
@@ -661,7 +702,7 @@ concreg.fit <- function(obj, id, W, G, PARMS)                                   
            CARDS <- cbind(obj$mm1o, obj$resp[,c(2, 4)], W, G, id, obj$stratum)
 #          CARDS <- cbind(obj$mm1o, obj$resp, weights, obj$timedata, id)        #! was ist weights?
 
-        obj$timedata <- scale(obj$timedata, FALSE, sd2)                         # weg?
+        if(!npar) obj$timedata <- scale(obj$timedata, FALSE, sd2)                         # weg?
         mmm <- cbind(obj$mm1, obj$timedata) # model matrix inc. time data       #! ohne timedata?
         ##   if (offset) {
         ##    IOARRAY[1,1]<-0    # first variable is offset
@@ -719,6 +760,7 @@ concreg.wei <- function(resp, max.strata, stratum, trunc.weights)
   data.tmp$statusfu<-(data.tmp$status==0)+0
   
   W <- rep(0, nrow(data.tmp))
+  if(all(data.tmp[,2]==1)) return(rep(1, nrow(data.tmp)))
 
   for (i.max.strata in 1:max.strata)  {
     data.strata <- data.tmp[stratum==i.max.strata,]
@@ -774,6 +816,7 @@ concreg.wei <- function(resp, max.strata, stratum, trunc.weights)
   W[is.na(W)] <- 1
   truncat<-quantile(W, probs=trunc.weights)
   W[W>truncat]<-truncat
+  W[abs(W)==Inf]<-0
   W
 }
 

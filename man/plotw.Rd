@@ -18,6 +18,7 @@ plotw(x,  rank=FALSE,  log=FALSE,  xlim=c(0,max(time)),
  The function plots the (optionally log-transformed) pair weights against (ranked) time, separately for each stratum.
     }
 \value{
+ no return value.
 }
 \author{Georg Heinze}
 \seealso{concreg}

@@ -2,8 +2,8 @@
 \alias{concreg}
 \title{Concordance regression for survival data}
 \description{
-             This package implements conditional logistic regression for survival data, where each stratum consists
-             of a pair of observations. The parameter estimates are estimated log odds of concordance (the generalized c-index).
+             This package implements concordance regression for survival and other outcome data types, where each summand of the log likelihood consists
+             of a pair of observations. The parameter estimates are estimated log odds of concordance and straightforwardly translate into partial concordance indices.
 }
 \usage{
 concreg(formula=attr(data, "formula"), 
@@ -22,7 +22,8 @@ concreg(formula=attr(data, "formula"),
  print=TRUE,                           
  c.risk=NULL,                          
  strata.var=NULL,                      
- trunc.weights=1,                      
+ trunc.weights=1,
+ npar=FALSE,                      
  ...)
 }
 \arguments{
@@ -51,6 +52,7 @@ concreg(formula=attr(data, "formula"),
    be 0 for censored (by end-of-follow-up or competing event), 1 for event}
    \item{strata.var}{variable for defining strata in stratified analysis}
    \item{trunc.weights}{quantile at which weights are truncated. set to 1 for no weight truncation.}
+   \item{npar}{estimation of nonparametric log odds of concordance?}
    \item{...}{further arguments}
    
 }
@@ -104,8 +106,6 @@ Lin D and Wei L (1989). The robust inference for the Cox proportional hazards mo
 
 }
 \author{Georg Heinze, Daniela Dunkler and Meinhard Ploner}
-\note{
-}
 \seealso{coxph}
 \examples{
 # gastric cancer data set

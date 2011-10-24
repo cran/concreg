@@ -2,7 +2,7 @@ SUBROUTINE CONCREG(cards, parms, IOARRAY)
 !DEC$ ATTRIBUTES DLLEXPORT :: CONCREG
 
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)  
-real*8, dimension (16) :: parms
+real*8, dimension (17) :: parms
 integer N, IP,JCODE,Irobust,ISEP,ITER,IMAXIT,IMAXHS,Ioffset
 real*8, dimension (int(parms(1))) :: BX, T, WT, gt, TMSF, Doffset
 real*8, dimension (int(parms(1)),int(parms(2))) :: X, XMSF
@@ -19,7 +19,7 @@ real*8, dimension (14) :: DER, EREST
 logical, dimension (int(parms(2)),int(parms(2))) :: mask
 !real*8, dimension (int(parms(1)), int(parms(2))) :: score_weights
 integer, dimension (int(parms(14))+1) :: stratamap
-integer maxstrata
+integer maxstrata, inpar
 
 
 
@@ -37,6 +37,7 @@ xconv=parms(7)
 ioffset=parms(16)
 maxstrata=parms(14)
 parms(10)=-11
+inpar=parms(17)
 
 ilastlike=0
 
@@ -104,7 +105,7 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
  parms(10)=-10
 ! write(6,*) "Vor 1. LIKE", b
  if (iter .eq. 1) then
-  CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap)
+  CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
   ! LIKE(N,IP,X,T1,t2,IC,XL,FD,vm,B,JCODE,ngv,score_weights,ntde,ft,ftmap,ilastlike,doffset,ainv)
  end if
 ! write(6,*) "Nach 1. LIKE"
@@ -134,13 +135,13 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
    ICONV=0
    IHS=0
 
-   CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap)
+   CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
    do while(((XL .le. XL0) .AND. (ITER.ne.1)) .AND. (ihs .le. imaxhs)) 
     IHS=IHS+1
     where (iflag .eq. 1)
      b=(b+b0)/2
     end where
-    CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap)
+    CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
    end do
   end if
  end if
@@ -156,7 +157,7 @@ end do
 ! robuste Varianz berechnen
 irobust=1
 
-call like(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,RVM, strata, maxstrata, stratamap)
+call like(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,RVM, strata, maxstrata, stratamap, inpar)
 
 ! alles in parms und ioarray eintragen
 
@@ -257,7 +258,7 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
     
  RETURN
 END  
-SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata, maxstrata, stratamap) 
+SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata, maxstrata, stratamap, inpar) 
 !DEC$ ATTRIBUTES DLLEXPORT :: like
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
@@ -268,7 +269,7 @@ SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata
  integer, dimension (N) :: IC, strata
  integer, dimension (IP) :: iflag
  real*8, dimension (N,IP) :: X, XEBX, UCONT
- real*8, dimension (IP) :: score_cont
+ real*8, dimension (IP) :: score_cont, pseudoxi, pseudoxj
  integer maxstrata
  integer, dimension (maxstrata+1) :: stratamap
  
@@ -299,6 +300,7 @@ SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata
 !   xges(i,j)=x(i,j)
 !  end do
 ! end do
+if (inpar .eq. 0) then
  bx=matmul(x,b)+offset
  ebx=dexp(bx)
  do i=1,N
@@ -307,6 +309,7 @@ SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata
    xxebx(i,k,:)=xebx(i,:)*x(i,k)    ! ???
   end do
  end do
+end if
  
 do istratum = 1, maxstrata
  if (stratamap(istratum+1)-stratamap(istratum) .GE. 2) then
@@ -320,11 +323,39 @@ do istratum = 1, maxstrata
      else
       wcr = 1.
      end if
+     if (inpar .eq. 1) then
+      ! define pseudovalues
+      do jj=1,ip
+       pseudoxi(jj)=0.5
+       pseudoxj(jj)=0.5
+       if ((x(i,jj) - x(j,jj)) .GT. 0.0001) then 
+        pseudoxi(jj)=1.
+        pseudoxj(jj)=0.
+       end if
+       if ((x(i,jj) - x(j, jj)) .LT. -0.0001) then
+        pseudoxi(jj)=0.
+        pseudoxj(jj)=1.
+       end if
+      end do
+      bx(i)=dot_product(pseudoxi,b)+offset(i)
+      bx(j)=dot_product(pseudoxj,b)+offset(j)
+      ebx(i)=dexp(bx(i))
+      ebx(j)=dexp(bx(j))
+      xebx(i,:)=pseudoxi*ebx(i)
+      xebx(j,:)=pseudoxj*ebx(j)
+      do k=1,ip
+       xxebx(i,k,:)=xebx(i,:)*pseudoxi(k)
+       xxebx(j,k,:)=xebx(j,:)*pseudoxj(k)
+      end do
+     else
+      pseudoxi=x(i,:)
+     end if
+     
      
      summe = ebx(i)+ ebx(j)*wcr 
      score_cont = (xebx(i,:) + xebx(j,:)*wcr)/summe
      xl = xl + wt(i) *(bx(i) - dlog(summe))
-     paircont = wt(i) *(x(i,:) - score_cont)
+     paircont = wt(i) *(pseudoxi - score_cont)
      fd = fd + paircont
      if (irobust .eq. 1) then
       ucont(i,:) = ucont(i,:) + paircont
