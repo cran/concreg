@@ -140,8 +140,8 @@ fp.scale <- function
 
 	## construct 3-col response:
 	resp <- model.extract(model.frame(formula, data = data), "response")
-	if(ncol(resp) == 2)
-          resp <- cbind(start=rep(0, nrow(resp)), resp)
+	if(is.null(dim(resp))) 	 resp<-cbind(resp-min(min(resp-0.01),0), rep(1,length(resp)))
+	if(ncol(resp) == 2)      resp <- cbind(start=rep(0, nrow(resp)), resp)
 
 	## sortieren nach STOPzeit und -Cens
 	if(sort) {
@@ -259,13 +259,6 @@ fp.scale <- function
 }
 
 
-#! Mantel für das Fortran ConReg Programm
-#! Version 1
-#! 22-01-2009
-#! Orginal  "coxphw.fp"
-#!##############################################################################
-".First.lib" <- function(lib, pkg)
-  library.dynam("concreg", pkg, lib)                                          #! ändern!!!
 
 
 `concreg` <- function                                                        #! ändern!!!
@@ -550,9 +543,36 @@ fp.scale <- function
         ##          }
         ##        }
         names(fit$prob) <- names(fit$ci.upper) <- names(fit$ci.lower) <- obj$covnames
-        attr(fit, "class") <- c("concreg","coxphw", "coxph")                 #! ändern
+        attr(fit, "class") <- c("concreg")                 #! ändern
         fit
 }
+
+coef.concreg<-function(object, ...) object$coefficients
+
+vcov.concreg<-function(object, ...) object$var
+
+cindex<-function(object, confint=FALSE, level=0.95) {
+  OC<-exp(coef(object))
+  cindex<-OC/(1+OC)
+  if(confint) {
+    ci<-confint(object, level=level, what="cindex")
+    cindex<-rbind(cindex,ci)
+    }
+  return(cindex)
+  }
+  
+confint.concreg<-function(object, parm, level=0.95, what="coefficients", ...){   
+  if(what != "coefficients" & what !="OC" & what !="cindex") {
+    what<-"coefficients"
+    warning("Will produce confidence intervals for regression coefficients.\n")
+    }
+  if(missing(parm)) parm<-1:length(coef(object))
+  se<-sqrt(diag(vcov(object)))
+  ci.coef<-(coef(object)+se*cbind(qnorm((1-level)/2), qnorm(1-(1-level)/2))  )[parm,]
+  if(what=="coefficients") return(ci.coef)
+  else if (what=="OC") return (exp(ci.coef))
+  else if (what=="cindex") return (exp(ci.coef)/(1+exp(ci.coef)))
+  }
 
 
 "plotw" <- function                                                             #! noch anpassen

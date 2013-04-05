@@ -1,6 +1,10 @@
-03dfd0ee0aaf13efa26a212520b46bca *DESCRIPTION
-a679c51dc9477a6f01c236259969c753 *NAMESPACE
-b756b8bbc808b6d6f0014f2772635970 *R/concreg.r
-91c6b28b1df4d273ed45fa0451fc6f6b *man/concreg.Rd
+a3beff31bfbd946a03afbbbbe392b931 *DESCRIPTION
+cd9ca4f183618e5adec0f1c61b43c154 *NAMESPACE
+00a87646751cada586e2fa0b82262821 *R/concreg.r
+828a2512a3b3d047905a8b0a3169c43e *man/cindex.rd
+2fb2e78612791b81cadde9044282507a *man/coef.concreg.rd
+a909a35ca92b3cc327d3b49fc8025eec *man/concreg.Rd
+d67b10e780763849a5c7746192864669 *man/confint.concreg.Rd
 b60190098db6c0187877c8da2f0d93f3 *man/plotw.Rd
-679a966fca324b150705cf8f60585434 *src/concreg_dll.f90
+920a3216065954764a23d0d9d4f2100b *man/vcov.concreg.rd
+8397fe46edffc1200e47610da2eaea7d *src/concreg_dll.f90

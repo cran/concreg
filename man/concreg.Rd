@@ -28,7 +28,7 @@ concreg(formula=attr(data, "formula"),
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
-    model terms on the right. The response must be a survival object as returned by the 'Surv' function.
+    model terms on the right. The response can be a survival object as returned by the 'Surv' function, or a single variable.
     }
   \item{data}{a data.frame in which to interpret the variables named in the 'formula' argument. }
   \item{normalize}{if T, weights are normalized such that their sum is equal to the number of events. May speed up or enable convergence if for some variables no weighting is used.}
@@ -158,6 +158,28 @@ plotw(fit)
 fit2<-concreg(data=gastric, Surv(time,status)~treat, trunc.weights=0.95)
 summary(fit2)
 
+# nonparametric c-index
+y<-rnorm(200)
+x<-rnorm(200)
+dat<-data.frame(x=x, y=y)
+fit3<-concreg(data=dat, y~x, npar=TRUE)
+cindex(fit3)
+confint(fit3, what="cindex")
+
+# Mann-Whitney-U (AUROC) statistic
+y<-rbinom(200, 1, 1-pnorm(x))
+dat<-data.frame(x=x, y=y)
+fit4<-concreg(data=dat, y~x, npar=TRUE)
+cindex(fit4)
+confint(fit4, what="cindex")
+ # symmetry of the univariate nonparametric model:
+fit5<-concreg(data=dat, x~y, npar=TRUE)
+cindex(fit5)
+confint(fit5, what="cindex")
+
+
 }
 \keyword{survival}
+\keyword{regression}
+\keyword{models}
 

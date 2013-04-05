@@ -1,10 +1,12 @@
 #### export of public functions:
-export(concreg)
-export(plotw)
+export(concreg,plotw,cindex)
 
 #### definition of S3 methods:
 S3method(print, concreg)
 S3method(summary, concreg)
+S3method(coef, concreg)
+S3method(vcov, concreg)
+S3method(confint, concreg)
 
 #### register shared objects (Fortran DLL):
 useDynLib(concreg)
