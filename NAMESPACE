@@ -1,3 +1,10 @@
+### imports
+importFrom("graphics","legend", "lines","plot")
+importFrom("stats","as.formula", "coef", "model.extract", "model.frame",
+    "model.matrix", "pchisq", "qnorm", "quantile", "sd", "vcov")
+importFrom("utils","tail")
+importFrom("survival", "Surv", "survfit", "untangle.specials")
+
 #### export of public functions:
 export(concreg,plotw,cindex)
 

@@ -2,22 +2,22 @@ SUBROUTINE CONCREG(cards, parms, IOARRAY)
 !DEC$ ATTRIBUTES DLLEXPORT :: CONCREG
 
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)  
-real*8, dimension (17) :: parms
+double precision, dimension (17) :: parms
 integer N, IP,JCODE,Irobust,ISEP,ITER,IMAXIT,IMAXHS,Ioffset
-real*8, dimension (int(parms(1))) :: BX, T, WT, gt, TMSF, Doffset
-real*8, dimension (int(parms(1)),int(parms(2))) :: X, XMSF
-!real*8, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
-real*8, dimension (int(parms(2))) :: B, B0, FD, TDERR,BMSF,zw1, xx, yy, dinit 
-real*8, dimension (int(parms(2)),int(parms(2))) :: SD, VM, vmlw, vmls, WK, fish, rvm
+double precision, dimension (int(parms(1))) :: T, WT, gt,  Doffset
+double precision, dimension (int(parms(1)),int(parms(2))) :: X
+!double precision, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
+double precision, dimension (int(parms(2))) :: B, B0, FD, zw1, xx, yy, dinit 
+double precision, dimension (int(parms(2)),int(parms(2))) :: SD, VM,  fish, rvm
 !integer, dimension (int(parms(1))) :: ibresc, IC, ICMSF, patid
-integer, dimension (int(parms(1))) :: IC, ICMSF, patid, strata, help
+integer, dimension (int(parms(1))) :: IC, strata, help
 integer, dimension (int(parms(2))) :: IFLAG
-real*8, dimension (int(parms(15)), int(parms(2))) :: dfbeta
-real*8, dimension (int(parms(1)),(int(parms(2))+6+int(parms(16)))) :: cards
-real*8, dimension (int((3+2*(parms(2)))),int((parms(2)))) :: IOARRAY
-real*8, dimension (14) :: DER, EREST
+!double precision, dimension (int(parms(15)), int(parms(2))) :: dfbeta
+double precision, dimension (int(parms(1)),(int(parms(2))+6+int(parms(16)))) :: cards
+double precision, dimension (int((3+2*(parms(2)))),int((parms(2)))) :: IOARRAY
+!double precision, dimension (14) ::  DER,EREST
 logical, dimension (int(parms(2)),int(parms(2))) :: mask
-!real*8, dimension (int(parms(1)), int(parms(2))) :: score_weights
+!double precision, dimension (int(parms(1)), int(parms(2))) :: score_weights
 integer, dimension (int(parms(14))+1) :: stratamap
 integer maxstrata, inpar
 
@@ -27,27 +27,27 @@ INTRINSIC DABS, DSQRT
 
 ifail=0  
 irobust=0            
-N=parms(1)
-IP=parms(2)
-Irobust=parms(3)
-imaxit=Parms(4)
-imaxhs=parms(5)
+N=int(parms(1))
+IP=int(parms(2))
+Irobust=int(parms(3))
+imaxit=int(Parms(4))
+imaxhs=int(parms(5))
 step=parms(6)
 xconv=parms(7)
-ioffset=parms(16)
-maxstrata=parms(14)
+ioffset=int(parms(16))
+maxstrata=int(parms(14))
 parms(10)=-11
-inpar=parms(17)
-
+inpar=int(parms(17))
+isep=0
 ilastlike=0
 
 dinit=ioarray(2,:)
-iflag=ioarray(1,:)
+iflag=int(ioarray(1,:))
 t=cards(:,ip+1+ioffset)
-ic=cards(:,ip+2+ioffset)    ! 0...censored, 1... event, 2... competing event
+ic=int(cards(:,ip+2+ioffset))    ! 0...censored, 1... event, 2... competing event
 wt=cards(:,ip+3+ioffset)    ! Gewicht zu den Zeitpunkten
 Gt=cards(:,ip+4+ioffset)    ! Follow-up-KM für competing event- gewichte
-strata=cards(:,ip+6+ioffset)
+strata=int(cards(:,ip+6+ioffset))
 
 ! define stratamap: first indices of each stratum plus N+1
 
@@ -105,7 +105,7 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
  parms(10)=-10
 ! write(6,*) "Vor 1. LIKE", b
  if (iter .eq. 1) then
-  CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
+  CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,wt, gt,doffset,irobust,rvm, maxstrata, stratamap, inpar)
   ! LIKE(N,IP,X,T1,t2,IC,XL,FD,vm,B,JCODE,ngv,score_weights,ntde,ft,ftmap,ilastlike,doffset,ainv)
  end if
 ! write(6,*) "Nach 1. LIKE"
@@ -135,13 +135,13 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
    ICONV=0
    IHS=0
 
-   CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
+   CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,wt, gt,doffset,irobust,rvm,  maxstrata, stratamap, inpar)
    do while(((XL .le. XL0) .AND. (ITER.ne.1)) .AND. (ihs .le. imaxhs)) 
     IHS=IHS+1
     where (iflag .eq. 1)
      b=(b+b0)/2
     end where
-    CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,rvm, strata, maxstrata, stratamap, inpar)
+    CALL LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,wt, gt,doffset,irobust,rvm, maxstrata, stratamap, inpar)
    end do
   end if
  end if
@@ -157,7 +157,7 @@ end do
 ! robuste Varianz berechnen
 irobust=1
 
-call like(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,doffset,irobust,RVM, strata, maxstrata, stratamap, inpar)
+call like(N,IP,X,T,IC,XL,FD,SD,VM,B,wt, gt,doffset,irobust,RVM,  maxstrata, stratamap, inpar)
 
 ! alles in parms und ioarray eintragen
 
@@ -217,8 +217,8 @@ SUBROUTINE INVRT(A,IA)
 !...note that a is changed on exit                                      
 !                                                                       
  INTEGER IA,n
- real*8 eps                                             
- real*8, dimension (IA,ia) :: A, B, WK
+! double precision eps                                             
+ double precision, dimension (IA,ia) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
  wk=a
@@ -233,7 +233,7 @@ SUBROUTINE INVRT(A,IA)
  RETURN
 END  
 
-SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)                          
+SUBROUTINE INVERT(A,IA,N,B,IFAIL)                          
 !DEC$ ATTRIBUTES DLLEXPORT :: invert
 
 
@@ -243,9 +243,9 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
 !...eps is a small quantity used to see if matrix singular              
 !...ifail on exit ifail=0 ok, ifail=1 matrix nearly singular            
 !                                                                       
- INTEGER IA,N,ib,ifail
- real*8 eps                                             
- real*8, dimension (IA,N) :: A, B, WK
+ INTEGER IA,N,ifail
+ !double precision eps                                             
+ double precision, dimension (IA,N) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
  wk=a
@@ -258,18 +258,18 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
     
  RETURN
 END  
-SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,JCODE,wt, gt,offset,irobust,rvm,strata, maxstrata, stratamap, inpar) 
+SUBROUTINE LIKE(N,IP,X,T,IC,XL,FD,SD,VM,B,wt, gt,offset,irobust,rvm, maxstrata, stratamap, inpar) 
 !DEC$ ATTRIBUTES DLLEXPORT :: like
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
- real*8, dimension (IP,IP) :: SD, WK,  vm, rvm
- real*8, dimension (N,IP,IP) :: XXEBX
- real*8, dimension (IP) :: FD, B, paircont
- real*8, dimension (N) :: EBX, BX, T,  offset, wt, gt
- integer, dimension (N) :: IC, strata
- integer, dimension (IP) :: iflag
- real*8, dimension (N,IP) :: X, XEBX, UCONT
- real*8, dimension (IP) :: score_cont, pseudoxi, pseudoxj
+ double precision, dimension (IP,IP) :: SD, WK,  vm, rvm
+ double precision, dimension (N,IP,IP) :: XXEBX
+ double precision, dimension (IP) :: FD, B, paircont
+ double precision, dimension (N) :: EBX, BX, T,  offset, wt, gt
+ integer, dimension (N) :: IC
+ !integer, dimension (IP) :: iflag
+ double precision, dimension (N,IP) :: X, XEBX, UCONT
+ double precision, dimension (IP) :: score_cont, pseudoxi, pseudoxj
  integer maxstrata
  integer, dimension (maxstrata+1) :: stratamap
  
@@ -379,7 +379,7 @@ end do
  if (IPGES .EQ. 1) then 
   vm=1/WK
  else
-  CALL INVERT(WK,ipges,Ipges,vm,Ipges,EPS,IFAIL)
+  CALL INVERT(WK,ipges,Ipges,vm,IFAIL)
  end if
  if (irobust .eq. 1) then
   wk = matmul(transpose(ucont),ucont)
@@ -395,9 +395,9 @@ SUBROUTINE vert(v,lv,n,w)
 
 INTEGER, INTENT(IN OUT)                  :: lv
 INTEGER, INTENT(IN)                      :: n
-REAL*8, INTENT(IN OUT)                     :: v(lv,N)
-REAL*8, INTENT(OUT)                     :: w(N)
-REAL*8 :: s,t
+double precision, INTENT(IN OUT)                     :: v(lv,N)
+double precision, INTENT(OUT)                     :: w(N)
+double precision :: s,t
 INTEGER :: i,j,k,l,m, p
 
 !Anm GH bei den Dimensionen die Indizes verändert, waren v(lv,1) und w(1) vorher
@@ -459,7 +459,7 @@ GO TO 50
 !     -----------------------
 !     |*** PIVOT COLUMNS ***|
 !     -----------------------
-90    l = w(k)
+90    l = int(w(k))
 DO  i = 1,n
   t = v(i,l)
   v(i,l) = v(i,k)

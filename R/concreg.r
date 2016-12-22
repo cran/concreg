@@ -1,4 +1,4 @@
-"useFP" <- function
+useFP <- function
 (
  obj,
  data
@@ -67,7 +67,7 @@ fp.scale <- function
 
 
 
-"decomposeSurv" <- function
+decomposeSurv <- function
 (
  formula,
  data,
@@ -261,7 +261,7 @@ fp.scale <- function
 
 
 
-`concreg` <- function                                                        #! ändern!!!
+concreg <- function                                                 
 (
  formula=attr(data, "formula"),         # formula
  data=sys.parent(),                     #
@@ -274,11 +274,11 @@ fp.scale <- function
  maxhs=5,                               # half steps
  epsilon=1e-6,                          #
  maxstep=2.5,                           #
- x=TRUE,                                # für Ausgabe
- y=TRUE,                                # für Ausgabe
+ x=TRUE,                                # for output
+ y=TRUE,                                # for output
  print=TRUE,                            # print fitting information on screen
- c.risk=NULL,                           # Vektor mit Competing Risk 0, 1=event, 2=competing risk (status ist normal!!) NEU
- strata.var=NULL,                       # Namen der Stratifizierungsvariablen (Daten selbst sind bei data dabei) NEU
+ c.risk=NULL,                           # Vector encoding competing risk: 0=censored, 1=event, 2=competing risk
+ strata.var=NULL,                       # strata variable name
  trunc.weights=1,                       # quantile for weight truncation: all weights greater than that quantile will be truncated to that value
  npar=FALSE,                            # nonparametric estimation?
  # breslow=NA, # righthand formula, if breslow weighted terms, e.g. ~ A + A:C
@@ -390,7 +390,7 @@ fp.scale <- function
   G <- G[,3]
 
   } else G<-rep(1,nrow(obj.full$resp))     #### Georg 110517
-  # neue Time Variable für competing risk
+  # new time variable for competing risk
   time.crisk <- obj.full$resp[,2]
   time.crisk[obj.full$resp[,"crisk"]==2] <- max(obj.full$resp[,2])+1
   obj.full$resp <- cbind(obj.full$resp, time.crisk)
@@ -402,7 +402,7 @@ fp.scale <- function
 
         obj <- obj.full
 
-        kk <- ncol(obj.full$mm1) # should be k2 - NTDE                          #! weg? und dafür k nach vorne holen
+        kk <- ncol(obj.full$mm1) # should be k2 - NTDE                          
         obj$mm1 <- obj.full$mm1[, obj$ind[1:kk], drop=FALSE]
         obj$covnames <- obj.full$covnames[obj$ind]
 
@@ -419,14 +419,14 @@ fp.scale <- function
         k2 <- k + NTDE                                                          #! weg?
         if (npar) nonpar<-1
         else nonpar<-0
-#! weg?: W$NGV, NTDE
-#! hinzufügen: obj.full$stratum, W, G
+
+
         PARMS <- c(n, k, 0, maxit, maxhs, maxstep, epsilon,  0, 0, 0, 0, 0, 0, max.strata, maxid, ind.offset, nonpar)
 
 
   # alles sortieren (obj, W, G, id ist sortiert)
   ord <- order(obj.full$stratum, obj.full$resp[,"time.crisk"],(1-obj.full$resp[,3]))
-  obj$mm1     <- obj$mm1[ord,]                                                  # ist jetzt keine Matrix mehr. stört das?
+  obj$mm1     <- obj$mm1[ord,]                                                  
   obj$resp    <- obj$resp[ord,]
   obj$stratum <- obj$stratum[ord]
   G           <- G[ord]
@@ -491,7 +491,7 @@ fp.scale <- function
 #                    dfbeta.resid = dfbeta.resid,
                     alpha    = alpha,                # significance level
                     var      = value0$cov.rob,                 # covariance matrix
-                    df       = k2,                   # degrees of freedom (k + NTDE)          #! ändern
+                    df       = k2,                   # degrees of freedom (k + NTDE)
                     iter     = value0$outpar[10],
                     method.ties = "no",         #
                     n = n,                           # number observations
@@ -543,7 +543,7 @@ fp.scale <- function
         ##          }
         ##        }
         names(fit$prob) <- names(fit$ci.upper) <- names(fit$ci.lower) <- obj$covnames
-        attr(fit, "class") <- c("concreg")                 #! ändern
+        attr(fit, "class") <- c("concreg")                 
         fit
 }
 
@@ -690,7 +690,7 @@ confint.concreg<-function(object, parm, level=0.95, what="coefficients", ...){
 }
 
 
-concreg.fit <- function(obj, id, W, G, PARMS, npar)                                   #! für was braucht man CARDS=NULL?
+concreg.fit <- function(obj, id, W, G, PARMS, npar)                                   
 {
   # fitter function
 
@@ -766,14 +766,14 @@ concreg.fit <- function(obj, id, W, G, PARMS, npar)                             
 }
 
 
-#! Berechne das Gewicht für die logistische Regression: W
+
                                      
 concreg.wei <- function(resp, max.strata, stratum, trunc.weights)
 {
   #! function to calculate the weigth for concreg
   #! rechnet mit time.crisk
 
-  data.tmp <- data.frame(resp[,c(5,3,2,4)])                                         #! achtung, falls start bei resp wegkommt, hier ändern
+  data.tmp <- data.frame(resp[,c(5,3,2,4)])
   dimnames(data.tmp)[[2]][2] <- "status"
   dimnames(data.tmp)[[2]][3] <- "time.orig"
   dimnames(data.tmp)[[2]][4] <- "status012"
